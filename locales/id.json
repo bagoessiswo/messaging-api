@@ -1,0 +1,43 @@
+{
+	"success": {
+		"creating_data": "Data berhasil dibuat",
+		"showing_data": "Data berhasil ditampilkan",
+		"updating_data": "Data berhasil diupdate",
+		"deleting_data": "Data berhasil dihapus"
+	},
+
+	"failed": {
+		"application_deprecated": "Versi aplikasi kedaluwarsa, silakan update dulu",
+		"creating_data": "Data gagal dibuat",
+		"showing_data": "Data gagal ditampilkan",
+		"updating_data": "Data gagal diupdate",
+		"deleting_data": "Data gagal dihapus"
+	},
+
+	"invalid": {
+		"app_version": "Versi aplikasi ini tidak dapat diverifikasi",
+		"distance": "Jarak tidak valid"
+	},
+
+	"not_null": {
+
+	},
+
+	"exist": {
+		"attendances": "Absensi sudah ada",
+		"trip": "Trip sudah ada"
+	},
+
+	"not_found": {
+		"user": "User tidak ditemukan"
+	},
+	
+	"error": {
+		
+		"forbidden_access": "Akses ditolak, kamu tidak memiliki wewenang untuk mengakses",
+		"request_not_allowed": "Permintaanmu tidak bisa diproses",
+		"token_expired": "Maaf, token kedaluwarsa",
+		"unauthorized": "Maaf, kamu tidak memiliki wewenang untuk aksi ini"
+		
+	}
+}

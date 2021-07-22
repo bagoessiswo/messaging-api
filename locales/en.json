@@ -1,0 +1,34 @@
+{
+	"success": {
+		"creating_data": "Success creating data",
+		"showing_data": "Success showing data",
+		"updating_data": "Success updating data",
+		"deleting_data": "Success deleting data"
+	},
+	"failed": {
+		"application_deprecated": "This Application version is Deprecated, please update first",
+		"creating_data": "Failed creating data",
+		"showing_data": "Failed showing data",
+		"updating_data": "Failed updating data",
+		"deleting_data": "Failed deleting data"
+	},
+	"invalid": {
+		"app_version": "The application version can not be verified",
+		"distance": "Invalid distance"
+	},
+	"not_null": {},
+	"exist": {
+		"attendances": "Attendance already existed",
+		"trip": "Trip already existed",
+		"attendance": "exist.attendance"
+	},
+	"not_found": {
+		"user": "User not found"
+	},
+	"error": {
+		"forbidden_access": "Access denied, you don't have permissions to perform this action",
+		"request_not_allowed": "Your request can't be processed",
+		"token_expired": "Sorry, your token is expired",
+		"unauthorized": "Sorry, you don't have permissions to perform this action"
+	}
+}
