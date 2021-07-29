@@ -16,7 +16,7 @@ module.exports = {
         const messageNotifs = await MessageNotification.findAll({
           where: {
             scheduled_at: {
-              [Op.gte]: moment.utc().format('YYYY-MM-DD HH:mm:ss')
+              [Op.lte]: moment.utc().format('YYYY-MM-DD HH:mm:ss')
             },
             status: 'pending'
           }
