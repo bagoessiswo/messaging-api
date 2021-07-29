@@ -34,6 +34,7 @@
     "mysql2": "^2.2.2",
     "path": "^0.12.7",
     "pm2": "^4.5.4",
+    "qrcode-terminal": "^0.12.0",
     "qs": "^6.9.4",
     "randomstring": "^1.1.5",
     "sequelize": "^6.3.5",

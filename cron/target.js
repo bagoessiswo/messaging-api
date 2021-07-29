@@ -11,10 +11,10 @@ module.exports = {
     const TargetDay = Models.target_day
     const moment = require('moment')
 
-    let job = new CronJob({
+    const job = new CronJob({
       cronTime: '* * * * *', // 0 23 * * *
       onTick: async () => {
-        let salesTargets = await SalesTarget.findAll({
+        const salesTargets = await SalesTarget.findAll({
           where: {
             is_weekly: 1,
             finished_at: {
@@ -30,10 +30,10 @@ module.exports = {
         })
 
         if (salesTargets.length > 0) {
-          let startedAt = moment().startOf('week').format('YYYY-MM-DD HH:mm:ss')
-          let finishedAt = moment().endOf('week').format('YYYY-MM-DD HH:mm:ss')
+          const startedAt = moment().startOf('week').format('YYYY-MM-DD HH:mm:ss')
+          const finishedAt = moment().endOf('week').format('YYYY-MM-DD HH:mm:ss')
           await Promise.map(salesTargets, async (salesTarget) => {
-            let existedTarget = await SalesTarget.findOne({
+            const existedTarget = await SalesTarget.findOne({
               where: {
                 user_id: salesTarget.user_id,
                 finished_at: {
@@ -42,7 +42,7 @@ module.exports = {
               }
             })
 
-            let baseTarget = await SalesTarget.findOne({
+            const baseTarget = await SalesTarget.findOne({
               where: {
                 user_id: salesTarget.user_id,
                 is_weekly: 1,
@@ -63,7 +63,7 @@ module.exports = {
             })
 
             if (!existedTarget && baseTarget) {
-              let result = await SalesTarget.findOrCreate({
+              const result = await SalesTarget.findOrCreate({
                 where: {
                   user_id: salesTarget.user_id,
                   is_weekly: 1,
@@ -83,7 +83,7 @@ module.exports = {
               })
 
               if (result[0]) {
-                let mappedTargetDays = await Promise.map(baseTarget.target_days, (target) => {
+                const mappedTargetDays = await Promise.map(baseTarget.target_days, (target) => {
                   return {
                     day: target.day,
                     total_visitation: target.total_visitation,

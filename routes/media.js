@@ -19,9 +19,9 @@ const isValidAppVersion = require('../middleware/isValidAppVersion')
 const isAuthenticated = require('../middleware/isAuthenticated')
 
 router.get('/', isValidMethod('GET'), isValidAppVersion, isAuthenticated, async (req, res, next) => {
-  let limit = req.query.limit || IwataConfig.data.limit_pagination
-  let page = req.query.page || 1
-  let sort = []
+  const limit = req.query.limit || IwataConfig.data.limit_pagination
+  const page = req.query.page || 1
+  const sort = []
 
   if (typeof req.query.sort !== 'undefined' && req.query.sort !== '') {
     sort.push(Sequelize.literal(req.query.sort))
@@ -29,11 +29,11 @@ router.get('/', isValidMethod('GET'), isValidAppVersion, isAuthenticated, async 
     sort.push(Sequelize.literal('created_at desc'))
   }
 
-  let authenticatedUser = await TokenHelper.getUser(req, res, next)
+  const authenticatedUser = await TokenHelper.getUser(req, res, next)
 
   if (authenticatedUser) {
     try {
-      let media = await Media.findAndCountAll({
+      const media = await Media.findAndCountAll({
         where: {
           user_id: authenticatedUser.id
         },
@@ -91,7 +91,7 @@ router.get('/', isValidMethod('GET'), isValidAppVersion, isAuthenticated, async 
 })
 
 router.post('/', isValidMethod('POST'), isValidAppVersion, isAuthenticated, async (req, res, next) => {
-  let authenticatedUser = await TokenHelper.getUser(req, res, next)
+  const authenticatedUser = await TokenHelper.getUser(req, res, next)
   if (authenticatedUser) {
     const mediaUpload = Multer({ dest: '/tmp/' }).single('src')
     mediaUpload(req, res, async (error) => {

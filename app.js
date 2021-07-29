@@ -1,17 +1,72 @@
 require('dotenv').config()
 
-var createError = require('http-errors')
-var express = require('express')
-var path = require('path')
-var cookieParser = require('cookie-parser')
-var bodyParser = require('body-parser')
-var logger = require('morgan')
-var cors = require('cors')
-var http = require('./helpers/http')
-var helmet = require('helmet')
+const createError = require('http-errors')
+const express = require('express')
+const path = require('path')
+const cookieParser = require('cookie-parser')
+const bodyParser = require('body-parser')
+const logger = require('morgan')
+const cors = require('cors')
+const http = require('./helpers/http')
+const helmet = require('helmet')
 const i18n = require('i18n')
+const qrcode = require('qrcode-terminal')
+const app = express()
 
-var app = express()
+const fs = require('fs')
+
+// const { Client } = require('whatsapp-web.js')
+// const SESSION_FILE_PATH = './session.json'
+
+// function connectWA (forceNewSession = false) {
+//   let sessionData
+//   if (fs.existsSync(SESSION_FILE_PATH) && !forceNewSession) {
+//     sessionData = require(SESSION_FILE_PATH)
+//   }
+//   const client = new Client({
+//     session: sessionData
+//   })
+//   client.initialize()
+//   client.on('qr', (qr) => {
+//     qrcode.generate(qr, { small: true })
+//   })
+//   client.on('authenticated', (session) => {
+//     sessionData = session
+//     fs.writeFile(SESSION_FILE_PATH, JSON.stringify(session), function (err) {
+//       if (err) {
+//         console.error(err)
+//       }
+//     })
+//   })
+//   client.on('ready', () => {
+//     console.log('WWebJS v', require('whatsapp-web.js').version)
+//     console.log('Client is ready!')
+//   })
+
+//   client.on('auth_failure', (reason) => {
+//     sessionData = null
+//     try {
+//       // Destroy actual browser
+//       client.destroy()
+
+//       // delete session path
+//       fs.rmdirSync(SESSION_FILE_PATH, { recursive: true })
+
+//       // Send command to restart the instance
+//       setTimeout(() => {
+//         connectWA()
+//       }, 3000)
+//     } catch (error) {
+//       console.error('Error on session finished. %s', error)
+//     }
+//   })
+
+//   return client
+// }
+
+// const client = connectWA()
+
+// app.locals.whatsappClient = client
 
 const corsOptions = {
   methods: ['PUT, GET, POST, DELETE, PATCH'],
@@ -63,18 +118,18 @@ app.use(i18n.init)
 // Routing
 const v1 = {
   index: require('./routes/index'),
-  contacts: require('./routes/contacts')
+  whatsapp: require('./routes/whatsapp')
 }
 
-// const cronRouter = require('./routes/cron/index')
+const cronRouter = require('./routes/cron/index')
 
 app.use('/', v1.index)
 
 // main
-app.use('/v1/contacts', v1.contacts)
+app.use('/v1/whatsapp', v1.whatsapp)
 
 // Cron
-// app.use('/cron', cronRouter)
+app.use('/cron', cronRouter)
 
 // catch 404 and forward to error handler
 app.use(function (req, res, next) {
