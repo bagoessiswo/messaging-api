@@ -5,54 +5,81 @@ module.exports = {
   sendQueue: () => {
     const CronJob = require('cron').CronJob
     const Models = require('../models/index')
-    // const IwataConfig = require('../config/iwata')
     const moment = require('moment')
     const { Op } = require('sequelize')
+    // const WAService = require('../services/whatsapp')
     const MessageNotification = Models.message_notification
+    const Axios = require('axios')
+    const imageToBase64 = require('image-to-base64')
+    const Media = Models.media
 
     const job = new CronJob({
-      cronTime: '* * * * *',
-      onTick: async (req) => {
-        const messageNotifs = await MessageNotification.findAll({
-          where: {
-            scheduled_at: {
-              [Op.lte]: moment.utc().format('YYYY-MM-DD HH:mm:ss')
-            },
-            status: 'pending'
-          }
-        })
+      cronTime: '*/2 * * * *',
+      onTick: async () => {
+        try {
+          const messageNotifs = await MessageNotification.findAll({
+            where: {
+              scheduled_at: {
+                [Op.lte]: moment().format('YYYY-MM-DD HH:mm:ss')
+              },
+              status: 'pending'
+            }
+          })
 
-        if (messageNotifs.length > 0) {
-          const WA = req.app.locals.whatsappClient
-          await Promise.map(messageNotifs, async message => {
-            await WA.on('ready', async () => {
-              // Getting chatId from the number.
-              // we have to delete "+" from the beginning and add "@c.us" at the end of the number.
-              const chatId = `${message.to}@c.us`
-              // Your message.
-              const text = message.message
-
-              // Sending message.
-              await WA.sendMessage(chatId, text).then(async message => {
-                await MessageNotification.update({
-                  status: 'success'
-                }, {
+          if (messageNotifs.length > 0) {
+            await Promise.map(messageNotifs, async message => {
+              // await WAService.sendMessage(message.id).then(result => {
+              //   console.log(result)
+              // }).catch(error => {
+              //   console.log(error)
+              // })
+              let media = null
+              if (message.media !== null && message.media !== '') {
+                const detailMedia = await Media.findOne({
                   where: {
-                    id: message.id
+                    [Op.or]: [
+                      {
+                        id: message.media
+
+                      },
+                      {
+                        src: message.media
+                      }
+                    ]
                   }
                 })
-              }).catch(async error => {
+
+                if (detailMedia) {
+                  await imageToBase64(detailMedia.src.original_url)
+                    .then(async base64Image => {
+                      media = {
+                        format: detailMedia.format,
+                        image: base64Image
+                      }
+                    })
+                }
+              }
+              await Axios({
+                url: `${process.env.APP_URL}/v1/whatsapp/${message.id}/send`,
+                method: 'post',
+                data: {
+                  mobile_phone: message.to,
+                  text: message.message,
+                  media: media
+                }
+              }).then(function (response) {
+                if (response.status === 200 || response.status === 201) {
+                  console.log(response.data)
+                } else {
+                  console.log(response.data)
+                }
+              }).catch(function (error) {
                 console.log(error)
-                await MessageNotification.update({
-                  status: 'failed'
-                }, {
-                  where: {
-                    id: message.id
-                  }
-                })
               })
             })
-          })
+          }
+        } catch (error) {
+          console.log(error)
         }
       },
       start: false,

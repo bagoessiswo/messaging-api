@@ -4,7 +4,7 @@ const Op = require('sequelize').Op
 const Promise = require('bluebird')
 
 module.exports = (sequelize, DataTypes) => {
-  let Media = sequelize.define('media', {
+  const Media = sequelize.define('media', {
     id: {
       type: DataTypes.UUID,
       defaultValue: DataTypes.UUIDV1,
@@ -107,7 +107,7 @@ module.exports = (sequelize, DataTypes) => {
   }
 
   Media.prototype.useMedia = function (mediable, mediableId) {
-    let media = this
+    const media = this
     return sequelize.models.media.update({
       mediable: null,
       mediable_id: null
