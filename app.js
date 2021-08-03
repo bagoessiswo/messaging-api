@@ -203,13 +203,19 @@ app.post('/v1/whatsapp/:message_id/send', async (req, res) => {
       throw new Error('Message not found')
     }
   }).run(req)
-
+  let type = 'personal'
   if (req.body.mobile_phone !== undefined && req.body.mobile_phone !== '') {
-    let mobilePhone = ((req.body.mobile_phone.replace(/-|,/g, '')).replace(/\+| |,/g, ''))
-    if (parseInt(mobilePhone.charAt(0)) === 0) {
-      mobilePhone = '62' + mobilePhone.slice(1)
+    const splitA = req.body.mobile_phone.split('@')
+
+    if (splitA && splitA.length > 1) {
+      type = 'group'
+    } else {
+      let mobilePhone = ((req.body.mobile_phone.replace(/-|,/g, '')).replace(/\+| |,/g, ''))
+      if (parseInt(mobilePhone.charAt(0)) === 0) {
+        mobilePhone = '62' + mobilePhone.slice(1)
+      }
+      req.body.mobile_phone = mobilePhone
     }
-    req.body.mobile_phone = mobilePhone
   }
   await body('mobile_phone').notEmpty().trim().run(req)
   await body('text').notEmpty().run(req)
@@ -219,13 +225,16 @@ app.post('/v1/whatsapp/:message_id/send', async (req, res) => {
     return res.status(400).json({ meta: Meta.response('failed', 400, result.array()) })
   } else {
     // const chatId = `${req.body.mobile_phone}@c.us`
-    const numberDetails = await client.getNumberId(req.body.mobile_phone) // get mobile number details
+    let numberDetails = req.body.mobile_phone
+    if (type === 'personal') {
+      numberDetails = (await client.getNumberId(req.body.mobile_phone))._serialized // get mobile number details
+    }
     const text = req.body.text
 
     if (numberDetails) {
       if (req.body.media !== null && req.body.media !== '' && req.body.media !== undefined) {
         const media = new MessageMedia(`image/${req.body.media.format}`, req.body.media.image)
-        const sendMessageData = await client.sendMessage(numberDetails._serialized, media, { caption: text })
+        const sendMessageData = await client.sendMessage(numberDetails, media, { caption: text })
         await MessageNotification.update({
           status: 'success'
         }, {
@@ -243,7 +252,7 @@ app.post('/v1/whatsapp/:message_id/send', async (req, res) => {
           }])
         })
       } else {
-        const sendMessageData = await client.sendMessage(numberDetails._serialized, text) // send message
+        const sendMessageData = await client.sendMessage(numberDetails, text) // send message
         await MessageNotification.update({
           status: 'success'
         }, {
