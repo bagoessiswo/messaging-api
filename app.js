@@ -58,6 +58,22 @@ function connectWA (forceNewSession = false) {
   client.on('disconnected', (reason) => {
     console.log('Client was logged out', reason)
   })
+
+  client.on('message', async msg => {
+    console.log('message')
+    const chatInfo = await msg.getChat()
+    if (msg.body === '!info') {
+      console.log(chatInfo)
+      console.log(chatInfo.id._serialized)
+      await chatInfo.sendMessage('Group Id: ' + chatInfo.id._serialized)
+    }
+  })
+
+  client.on('change_battery', (batteryInfo) => {
+    // Battery percentage for attached device has changed
+    const { battery, plugged } = batteryInfo
+    console.log(`Battery: ${battery}% - Charging? ${plugged}`)
+  })
   // client.on('auth_failure', (reason) => {
   //   sessionData = null
   //   try {
