@@ -11,10 +11,10 @@ module.exports = {
     const MessageNotification = Models.message_notification
     const Axios = require('axios')
     const imageToBase64 = require('image-to-base64')
-    const Media = Models.media
+    // const Media = Models.media
 
     const job = new CronJob({
-      cronTime: '*/2 * * * *',
+      cronTime: '* * * * *',
       onTick: async () => {
         try {
           const messageNotifs = await MessageNotification.findAll({
@@ -35,29 +35,29 @@ module.exports = {
               // })
               let media = null
               if (message.media !== null && message.media !== '') {
-                const detailMedia = await Media.findOne({
-                  where: {
-                    [Op.or]: [
-                      {
-                        id: message.media
+                // const detailMedia = await Media.findOne({
+                //   where: {
+                //     [Op.or]: [
+                //       {
+                //         id: message.media
 
-                      },
-                      {
-                        src: message.media
-                      }
-                    ]
-                  }
-                })
+                //       },
+                //       {
+                //         src: message.media
+                //       }
+                //     ]
+                //   }
+                // })
 
-                if (detailMedia) {
-                  await imageToBase64(detailMedia.src.original_url)
-                    .then(async base64Image => {
-                      media = {
-                        format: detailMedia.format,
-                        image: base64Image
-                      }
-                    })
-                }
+                // if (detailMedia) {
+                await imageToBase64(message.media)
+                  .then(async base64Image => {
+                    media = {
+                      format: 'jpg',
+                      image: base64Image
+                    }
+                  })
+                // }
               }
               await Axios({
                 url: `${process.env.APP_URL}/v1/whatsapp/${message.id}/send`,
