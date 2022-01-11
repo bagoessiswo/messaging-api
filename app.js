@@ -61,19 +61,20 @@ function connectWA (forceNewSession = false) {
 
   client.on('message', async msg => {
     console.log('message')
-    const chatInfo = await msg.getChat()
-    if (msg.body === '!info') {
-      console.log(chatInfo)
-      console.log(chatInfo.id._serialized)
-      await chatInfo.sendMessage('Group Id: ' + chatInfo.id._serialized)
+    const chatInfo = await msg.getChat();
+    if(msg.body === '!info') {
+       
+        console.log(chatInfo)
+        console.log(chatInfo.id._serialized)
+        await chatInfo.sendMessage('Group Id: ' + chatInfo.id._serialized);
     }
   })
 
   client.on('change_battery', (batteryInfo) => {
     // Battery percentage for attached device has changed
-    const { battery, plugged } = batteryInfo
-    console.log(`Battery: ${battery}% - Charging? ${plugged}`)
-  })
+    const { battery, plugged } = batteryInfo;
+    console.log(`Battery: ${battery}% - Charging? ${plugged}`);
+  });
   // client.on('auth_failure', (reason) => {
   //   sessionData = null
   //   try {
@@ -243,7 +244,14 @@ app.post('/v1/whatsapp/:message_id/send', async (req, res) => {
     // const chatId = `${req.body.mobile_phone}@c.us`
     let numberDetails = req.body.mobile_phone
     if (type === 'personal') {
-      numberDetails = (await client.getNumberId(req.body.mobile_phone))._serialized // get mobile number details
+      let numberId = await client.getNumberId(req.body.mobile_phone)
+
+      if(numberId !== null && numberId !== '') {
+        numberDetails = numberId._serialized // get mobile number details
+      } else {
+        numberDetails = `${req.body.mobile_phone}@c.us`
+      }
+      
     }
     const text = req.body.text
 
