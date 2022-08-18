@@ -9,6 +9,7 @@ module.exports = (sequelize, DataTypes) => {
     },
     created_by: DataTypes.STRING,
     to: DataTypes.STRING,
+    robot: DataTypes.INTEGER,
     media: DataTypes.STRING,
     message: DataTypes.STRING,
     scheduled_at: DataTypes.DATE,

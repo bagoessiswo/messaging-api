@@ -22,34 +22,14 @@ module.exports = {
               scheduled_at: {
                 [Op.lte]: moment().format('YYYY-MM-DD HH:mm:ss')
               },
-              status: 'pending'
+              status: 'pending',
             }
           })
 
           if (messageNotifs.length > 0) {
             await Promise.map(messageNotifs, async message => {
-              // await WAService.sendMessage(message.id).then(result => {
-              //   console.log(result)
-              // }).catch(error => {
-              //   console.log(error)
-              // })
               let media = null
               if (message.media !== null && message.media !== '') {
-                // const detailMedia = await Media.findOne({
-                //   where: {
-                //     [Op.or]: [
-                //       {
-                //         id: message.media
-
-                //       },
-                //       {
-                //         src: message.media
-                //       }
-                //     ]
-                //   }
-                // })
-
-                // if (detailMedia) {
                 await imageToBase64(message.media)
                   .then(async base64Image => {
                     media = {
@@ -57,7 +37,6 @@ module.exports = {
                       image: base64Image
                     }
                   })
-                // }
               }
               await Axios({
                 url: `${process.env.APP_URL}/v1/whatsapp/${message.id}/send`,
@@ -65,7 +44,8 @@ module.exports = {
                 data: {
                   mobile_phone: message.to,
                   text: message.message,
-                  media: media
+                  media: media,
+                  robot: message.robot
                 }
               }).then(function (response) {
                 if (response.status === 200 || response.status === 201) {
