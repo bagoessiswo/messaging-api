@@ -29,33 +29,36 @@ module.exports = {
           if (messageNotifs.length > 0) {
             await Promise.map(messageNotifs, async message => {
               let media = null
-              if (message.media !== null && message.media !== '') {
-                await imageToBase64(message.media)
-                  .then(async base64Image => {
-                    media = {
-                      format: 'jpg',
-                      image: base64Image
-                    }
-                  })
+              //if (message.media !== null && message.media !== '') {
+              //  await imageToBase64(message.media)
+              //    .then(async base64Image => {
+              //      media = {
+              //        format: 'jpg',
+              //        image: base64Image
+              //      }
+              //    })
+              //}
+              if (message.to.length > 4) {
+                await Axios({
+                  url: `${process.env.APP_URL}/v1/whatsapp/${message.id}/send`,
+                  method: 'post',
+                  data: {
+                    mobile_phone: message.to,
+                    text: message.message,
+                    media: media,
+                    robot: message.robot
+                  }
+                }).then(function (response) {
+                  if (response.status === 200 || response.status === 201) {
+                    console.log(response.status)
+                  } else {
+                    console.log(response.status)
+                  }
+                }).catch(function (error) {
+                  console.log(error)
+                })
               }
-              await Axios({
-                url: `${process.env.APP_URL}/v1/whatsapp/${message.id}/send`,
-                method: 'post',
-                data: {
-                  mobile_phone: message.to,
-                  text: message.message,
-                  media: media,
-                  robot: message.robot
-                }
-              }).then(function (response) {
-                if (response.status === 200 || response.status === 201) {
-                  console.log(response.data)
-                } else {
-                  console.log(response.data)
-                }
-              }).catch(function (error) {
-                console.log(error)
-              })
+              return message
             })
           }
         } catch (error) {

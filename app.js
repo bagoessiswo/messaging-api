@@ -40,15 +40,15 @@ function connectWA (robot = 1, forceNewSession = false) {
     })
   }
 
-  if (robot === 2) {
-    client = new Client({
-      authStrategy: new LocalAuth({
-        clientId: "client-two",
-        qrTimeoutMs: 0,
-        dataPath: SESSION_FILE_PATH2
-      })
-    })
-  }
+ // if (robot === 2) {
+ //   client = new Client({
+ //     authStrategy: new LocalAuth({
+ //       clientId: "client-two",
+ //       qrTimeoutMs: 0,
+ //       dataPath: SESSION_FILE_PATH2
+ //     })
+ //   })
+ // }
   client.initialize()
   client.on('qr', (qr) => {
     console.log('QR Robot '+robot)
@@ -72,7 +72,7 @@ function connectWA (robot = 1, forceNewSession = false) {
 
   client.on('message', async msg => {
     const chatInfo = await msg.getChat();
-    if(msg.body) {
+    if(msg.body === 'bersedia' || msg.body === 'Bersedia') {
       let mobilePhone = ((chatInfo.id.user.replace(/-|,/g, '')).replace(/\+| |,/g, ''))
       //if (parseInt(mobilePhone.charAt(0)) === 6 && parseInt(mobilePhone.charAt(1) === 2)) {
       // 	console.log('ok')
@@ -80,7 +80,7 @@ function connectWA (robot = 1, forceNewSession = false) {
       //}
       mobilePhone = '0' + mobilePhone.slice(2)
       // console.log(mobilePhone)
-      if (robot === 2) {
+      if (robot === 2 || robot === 1) {
         await JobstreetApplicant.update({
           is_responded: 1
         }, {
@@ -89,7 +89,6 @@ function connectWA (robot = 1, forceNewSession = false) {
           }
         })
       }
-      
     }
 
     if(msg.body === '!info') {
@@ -126,7 +125,7 @@ function connectWA (robot = 1, forceNewSession = false) {
 }
 
 const client = connectWA()
-const client2 = connectWA(2)
+//const client2 = connectWA(2)
 
 // app.locals.whatsappClient = client
 
@@ -272,12 +271,12 @@ app.post('/v1/whatsapp/:message_id/send', async (req, res) => {
     return res.status(400).json({ meta: Meta.response('failed', 400, result.array()) })
   } else {
     // const chatId = `${req.body.mobile_phone}@c.us`
-    console.log(req.body)
+   // console.log(req.body)
     let waClient = client
 
-    if (req.body.robot === 2) {
-      waClient = client2
-    }
+   // if (req.body.robot === 2) {
+   //   waClient = client2
+   // }
 
     if (waClient !== undefined) {     
       let numberDetails = req.body.mobile_phone
