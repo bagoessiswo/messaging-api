@@ -226,7 +226,7 @@ app.post('/v1/whatsapp/send', async (req, res) => {
       if (parseInt(mobilePhone.charAt(0)) === 0) {
         mobilePhone = '62' + mobilePhone.slice(1)
       }
-      req.body.to = mobilePhone
+      req.body.to = [mobilePhone]
     }
   }
 
@@ -241,23 +241,24 @@ app.post('/v1/whatsapp/send', async (req, res) => {
   if (!result.isEmpty()) {
     return res.status(400).json({ meta: Meta.response('failed', 400, result.array()) })
   } else {
-    try {
-      const successSend = []
-      const failedSend = []
-      const mappedMessage = await Promise.map(req.body.to, async (phone) => {
-        let type = 'personal'
-        if (phone !== undefined && phone !== '') {
-          const splitA = phone.split('@')
-          if (splitA && splitA.length > 1) {
-            type = 'group'
-          }
+    let waClient = client
+    if (req.body.robot === 2) {
+      waClient = client2
+    }
 
-          let waClient = client
-          if (req.body.robot === 2) {
-            waClient = client2
-          }
-
-          if (waClient !== undefined){
+    if (waClient !== undefined){
+      try { 
+        const successSend = []
+        const failedSend = []
+        const mappedMessage = await Promise.map(req.body.to, async (phone) => {
+          let type = 'personal'
+          if (phone !== undefined && phone !== '') {
+            const splitA = phone.split('@')
+            if (splitA && splitA.length > 1) {
+              type = 'group'
+            }
+  
+            
             let numberDetails = phone
             if (type === 'personal') {
               let numberId = await waClient.getNumberId(phone)
@@ -278,7 +279,7 @@ app.post('/v1/whatsapp/send', async (req, res) => {
               } else {
                 sendMessageData = await waClient.sendMessage(numberDetails, text) // send message
               }
-
+  
               if (sendMessageData.ack === 'ACK_ERROR') {
                 failedSend.push({
                   media: req.body.media || null,
@@ -339,23 +340,30 @@ app.post('/v1/whatsapp/send', async (req, res) => {
               }
             }
           }
-
-        }
-      })
-      await MessageNotification.bulkCreate(mappedMessage)
-      return res.json({
-        data: {
-          success: successSend,
-          failed: failedSend
-        },
-        meta: Meta.response('success', 200, [{
-          param: '',
-          message: res.__('failed.creating_data'),
-          value: ''
-        }])
-      })
-    } catch (error) {
-      console.log(error)
+        })
+        await MessageNotification.bulkCreate(mappedMessage)
+        return res.json({
+          data: {
+            success: successSend,
+            failed: failedSend
+          },
+          meta: Meta.response('success', 200, [{
+            param: '',
+            message: res.__('failed.creating_data'),
+            value: ''
+          }])
+        })
+      } catch (error) {
+        console.log(error)
+        return res.json({
+          meta: Meta.response('failed', 400, [{
+            param: '',
+            message: res.__('failed.creating_data'),
+            value: ''
+          }])
+        })
+      }
+    } else {
       return res.json({
         meta: Meta.response('failed', 400, [{
           param: '',
@@ -364,6 +372,7 @@ app.post('/v1/whatsapp/send', async (req, res) => {
         }])
       })
     }
+    
   }
 })
 
