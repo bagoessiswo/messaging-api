@@ -244,7 +244,7 @@ app.post('/v1/whatsapp/send', async (req, res) => {
     try {
       const successSend = []
       const failedSend = []
-      const mappedMessage = await Promise.map(req.body.to, (phone) => {
+      const mappedMessage = await Promise.map(req.body.to, async (phone) => {
         let type = 'personal'
         if (phone !== undefined && phone !== '') {
           const splitA = phone.split('@')
