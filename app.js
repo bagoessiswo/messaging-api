@@ -18,7 +18,8 @@ const app = express()
 const { param, body, validationResult } = require('express-validator')
 
 const Meta = require('./helpers/meta')
-
+const isValidMethod = require('./middleware/isValidMethod')
+const isValidAppVersion = require('./middleware/isValidAppVersion')
 const Models = require('./models/index')
 const MessageNotification = Models.message_notification
 const JobstreetApplicant = Models.jobstreet_applicant
@@ -209,11 +210,11 @@ const v1 = {
 
 const cronRouter = require('./routes/cron/index')
 
-app.post('/v1/whatsapp/send', async (req, res) => {
+app.post('/v1/whatsapp/send', isValidMethod('POST'), isValidAppVersion, async (req, res) => {
   await body('to').notEmpty().run(req)
 
   if (Array.isArray(req.body.to)) {
-    req.body.to.map(phone => {
+    req.body.to = await Promise.map(req.body.to, phone => {
       let mobilePhone = ((phone.replace(/-|,/g, '')).replace(/\+| |,/g, ''))
       if (parseInt(mobilePhone.charAt(0)) === 0) {
         mobilePhone = '62' + mobilePhone.slice(1)
