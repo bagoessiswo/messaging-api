@@ -23,21 +23,13 @@ module.exports = {
                 [Op.lte]: moment().format('YYYY-MM-DD HH:mm:ss')
               },
               status: 'pending',
+              method: 'scheduled'
             }
           })
 
           if (messageNotifs.length > 0) {
             await Promise.map(messageNotifs, async message => {
               let media = null
-              //if (message.media !== null && message.media !== '') {
-              //  await imageToBase64(message.media)
-              //    .then(async base64Image => {
-              //      media = {
-              //        format: 'jpg',
-              //        image: base64Image
-              //      }
-              //    })
-              //}
               if (message.to.length > 4) {
                 await Axios({
                   url: `${process.env.APP_URL}/v1/whatsapp/${message.id}/send`,
@@ -45,7 +37,7 @@ module.exports = {
                   data: {
                     mobile_phone: message.to,
                     text: message.message,
-                    media: media,
+                    media: message.media,
                     robot: message.robot
                   }
                 }).then(function (response) {

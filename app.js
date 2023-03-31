@@ -1,5 +1,7 @@
 require('dotenv').config()
 
+const Promise = require('bluebird')
+const moment = require('moment')
 const createError = require('http-errors')
 const express = require('express')
 const path = require('path')
@@ -16,23 +18,37 @@ const app = express()
 const { param, body, validationResult } = require('express-validator')
 
 const Meta = require('./helpers/meta')
-const { MessageMedia } = require('whatsapp-web.js')
 
 const Models = require('./models/index')
 const MessageNotification = Models.message_notification
 const JobstreetApplicant = Models.jobstreet_applicant
 let INTERVIEW_LINK = 'https://task.iwata.id/interview'
 const fs = require('fs')
-
-const { Client, LocalAuth } = require('whatsapp-web.js')
+const MONGO_URI = 'mongodb+srv://qupas:s9kb0rQnQsB6Mwrj@cluster0.t9bib6c.mongodb.net/?retryWrites=true&w=majority'
+const { MongoStore } = require('wwebjs-mongo');
+const mongoose = require('mongoose');
+const { Client, LocalAuth, RemoteAuth, MessageMedia } = require('whatsapp-web.js')
 const SESSION_FILE_PATH2 = './.wwebjs_auth2'
 const SESSION_FILE_PATH = './.wwebjs_auth'
 function connectWA (robot = 1, forceNewSession = false) {
   let client = null
-
   if (robot === 1) {
     client = new Client({
       authStrategy: new LocalAuth({
+        restartOnAuthFail: true,
+  	    puppeteer: {
+          headless: true,
+          args: [
+            '--no-sandbox',
+              '--disable-setuid-sandbox',
+            '--disable-dev-shm-usage',
+            '--disable-accelerated-2d-canvas',
+            '--no-first-run',
+            '--no-zygote',
+            '--single-process', // <- this one doesn't works in Windows
+            '--disable-gpu'
+          ],
+        },
         clientId: "client-one",
         qrTimeoutMs: 0,
         dataPath: SESSION_FILE_PATH
@@ -40,20 +56,35 @@ function connectWA (robot = 1, forceNewSession = false) {
     })
   }
 
- // if (robot === 2) {
- //   client = new Client({
- //     authStrategy: new LocalAuth({
- //       clientId: "client-two",
- //       qrTimeoutMs: 0,
- //       dataPath: SESSION_FILE_PATH2
- //     })
- //   })
- // }
+  if (robot === 2) {
+    client = new Client({
+      authStrategy: new LocalAuth({
+        restartOnAuthFail: true,
+        puppeteer: {
+          headless: true,
+          args: [
+            '--no-sandbox',
+            '--disable-setuid-sandbox',
+            '--disable-dev-shm-usage',
+            '--disable-accelerated-2d-canvas',
+            '--no-first-run',
+            '--no-zygote',
+            '--single-process', // <- this one doesn't works in Windows
+            '--disable-gpu'
+          ],
+        },
+        clientId: "client-two",
+        qrTimeoutMs: 0,
+        dataPath: SESSION_FILE_PATH2
+      })
+    })
+  }
   client.initialize()
   client.on('qr', (qr) => {
     console.log('QR Robot '+robot)
     qrcode.generate(qr, { small: true })
   })
+
   client.on('authenticated', (session) => {
     console.log('Connected')
   })
@@ -74,12 +105,7 @@ function connectWA (robot = 1, forceNewSession = false) {
     const chatInfo = await msg.getChat();
     if(msg.body === 'bersedia' || msg.body === 'Bersedia') {
       let mobilePhone = ((chatInfo.id.user.replace(/-|,/g, '')).replace(/\+| |,/g, ''))
-      //if (parseInt(mobilePhone.charAt(0)) === 6 && parseInt(mobilePhone.charAt(1) === 2)) {
-      // 	console.log('ok')
-      //  mobilePhone = '0' + mobilePhone.slice(2)
-      //}
       mobilePhone = '0' + mobilePhone.slice(2)
-      // console.log(mobilePhone)
       if (robot === 2 || robot === 1) {
         await JobstreetApplicant.update({
           is_responded: 1
@@ -124,10 +150,8 @@ function connectWA (robot = 1, forceNewSession = false) {
   return client
 }
 
-const client = connectWA()
-//const client2 = connectWA(2)
-
-// app.locals.whatsappClient = client
+const client =  connectWA()
+const client2 = connectWA(2)
 
 const corsOptions = {
   methods: ['PUT, GET, POST, DELETE, PATCH'],
@@ -185,55 +209,163 @@ const v1 = {
 
 const cronRouter = require('./routes/cron/index')
 
-// app.post('/v1/test/send-message', async (req, res) => {
-//   const WA = client
+app.post('/v1/whatsapp/send', async (req, res) => {
+  await body('to').notEmpty().run(req)
 
-//   if (req.body.mobile_phone !== undefined && req.body.mobile_phone !== '') {
-//     let mobilePhone = ((req.body.mobile_phone.replace(/-|,/g, '')).replace(/\+| |,/g, ''))
-//     if (parseInt(mobilePhone.charAt(0)) === 0) {
-//       mobilePhone = '62' + mobilePhone.slice(1)
-//     }
-//     req.body.mobile_phone = mobilePhone
-//   }
-//   await body('mobile_phone').trim().run(req)
-//   await body('text').notEmpty().run(req)
+  if (Array.isArray(req.body.to)) {
+    req.body.to.map(phone => {
+      let mobilePhone = ((phone.replace(/-|,/g, '')).replace(/\+| |,/g, ''))
+      if (parseInt(mobilePhone.charAt(0)) === 0) {
+        mobilePhone = '62' + mobilePhone.slice(1)
+      }
+      return mobilePhone
+    })
+  } else {
+    if (req.body.to !== undefined && req.body.to !== '') {
+      let mobilePhone = ((req.body.to.replace(/-|,/g, '')).replace(/\+| |,/g, ''))
+      if (parseInt(mobilePhone.charAt(0)) === 0) {
+        mobilePhone = '62' + mobilePhone.slice(1)
+      }
+      req.body.to = mobilePhone
+    }
+  }
 
-//   const result = validationResult(req)
-//   if (!result.isEmpty()) {
-//     return res.status(400).json({ meta: Meta.response('failed', 400, result.array()) })
-//   } else {
-//     try {
-//       WA.on('ready', () => {
-//         // Getting chatId from the number.
-//         // we have to delete "+" from the beginning and add "@c.us" at the end of the number.
-//         const chatId = `${req.body.mobile_phone}@c.us`
-//         // Your message.
-//         const text = req.body.text
-//         console.log('Ready to send')
-//         // Sending message.
-//         WA.sendMessage(chatId, text).then(message => {
-//           return res.json({
-//             data: message,
-//             meta: Meta.response('success', 200, [{
-//               param: '',
-//               message: res.__('success.creating_data'),
-//               value: ''
-//             }])
-//           })
-//         })
-//       })
-//     } catch (error) {
-//       console.log(error)
-//       return res.json({
-//         meta: Meta.response('failed', 400, [{
-//           param: '',
-//           message: res.__('failed.creating_data'),
-//           value: ''
-//         }])
-//       })
-//     }
-//   }
-// })
+  await body('message').notEmpty().trim().run(req)
+  await body('media').trim().run(req)
+
+  if (req.body.robot === undefined || req.body.robot === '') {
+    req.body.robot = 1
+  }
+
+  const result = validationResult(req)
+  if (!result.isEmpty()) {
+    return res.status(400).json({ meta: Meta.response('failed', 400, result.array()) })
+  } else {
+    try {
+      const successSend = []
+      const failedSend = []
+      const mappedMessage = await Promise.map(req.body.to, (phone) => {
+        let type = 'personal'
+        if (phone !== undefined && phone !== '') {
+          const splitA = phone.split('@')
+          if (splitA && splitA.length > 1) {
+            type = 'group'
+          }
+
+          let waClient = client
+          if (req.body.robot === 2) {
+            waClient = client2
+          }
+
+          if (waClient !== undefined){
+            let numberDetails = phone
+            if (type === 'personal') {
+              let numberId = await waClient.getNumberId(phone)
+        
+              if(numberId !== null && numberId !== '') {
+                numberDetails = numberId._serialized // get mobile number details
+              } else {
+                numberDetails = `${phone}@c.us`
+              }
+            }
+            const text = req.body.message
+        
+            if (numberDetails) {
+              let sendMessageData = null
+              if (req.body.media !== null && req.body.media !== '' && req.body.media !== undefined) {
+                const media = await MessageMedia.fromUrl(req.body.media)
+                sendMessageData = await waClient.sendMessage(numberDetails, media, { caption: text })
+              } else {
+                sendMessageData = await waClient.sendMessage(numberDetails, text) // send message
+              }
+
+              if (sendMessageData.ack === 'ACK_ERROR') {
+                failedSend.push({
+                  media: req.body.media || null,
+                  message: req.body.message,
+                  status: 'success',
+                  scheduled_at: moment().format('YYYY-MM-DD HH:mm:ss'),
+                  to: phone,
+                  robot: req.body.robot,
+                  method: 'direct'
+                })
+                return {
+                  media: req.body.media || null,
+                  message: req.body.message,
+                  status: 'failed',
+                  scheduled_at: moment().format('YYYY-MM-DD HH:mm:ss'),
+                  to: phone,
+                  robot: req.body.robot,
+                  method: 'direct'
+                }
+              } else {
+                successSend.push({
+                  media: req.body.media || null,
+                  message: req.body.message,
+                  status: 'success',
+                  scheduled_at: moment().format('YYYY-MM-DD HH:mm:ss'),
+                  to: phone,
+                  robot: req.body.robot,
+                  method: 'direct'
+                })
+                return {
+                  media: req.body.media || null,
+                  message: req.body.message,
+                  status: 'success',
+                  scheduled_at: moment().format('YYYY-MM-DD HH:mm:ss'),
+                  to: phone,
+                  robot: req.body.robot,
+                  method: 'direct'
+                }
+              }
+            } else {
+              failedSend.push({
+                media: req.body.media || null,
+                message: req.body.message,
+                status: 'success',
+                scheduled_at: moment().format('YYYY-MM-DD HH:mm:ss'),
+                to: phone,
+                robot: req.body.robot,
+                method: 'direct'
+              })
+              return {
+                media: req.body.media || null,
+                message: req.body.message,
+                status: 'failed',
+                scheduled_at: moment().format('YYYY-MM-DD HH:mm:ss'),
+                to: phone,
+                robot: req.body.robot,
+                method: 'direct'
+              }
+            }
+          }
+
+        }
+      })
+      await MessageNotification.bulkCreate(mappedMessage)
+      return res.json({
+        data: {
+          success: successSend,
+          failed: failedSend
+        },
+        meta: Meta.response('success', 200, [{
+          param: '',
+          message: res.__('failed.creating_data'),
+          value: ''
+        }])
+      })
+    } catch (error) {
+      console.log(error)
+      return res.json({
+        meta: Meta.response('failed', 400, [{
+          param: '',
+          message: res.__('failed.creating_data'),
+          value: ''
+        }])
+      })
+    }
+  }
+})
 
 app.post('/v1/whatsapp/:message_id/send', async (req, res) => {
   await param('message_id').notEmpty().trim().escape().custom(async (value) => {
@@ -274,11 +406,11 @@ app.post('/v1/whatsapp/:message_id/send', async (req, res) => {
    // console.log(req.body)
     let waClient = client
 
-   // if (req.body.robot === 2) {
-   //   waClient = client2
-   // }
+    if (req.body.robot === 2) {
+      waClient = client2
+    }
 
-    if (waClient !== undefined) {     
+    if (waClient !== undefined){
       let numberDetails = req.body.mobile_phone
       if (type === 'personal') {
         let numberId = await waClient.getNumberId(req.body.mobile_phone)
@@ -292,28 +424,28 @@ app.post('/v1/whatsapp/:message_id/send', async (req, res) => {
       const text = req.body.text
   
       if (numberDetails) {
-        //if (req.body.media !== null && req.body.media !== '' && req.body.media !== undefined) {
-        //  const media = new MessageMedia(`image/${req.body.media.format}`, req.body.media.image)
-        //  const sendMessageData = await waClient.sendMessage(numberDetails, media, { caption: text, sendMediaAsDocument: true })
-        //  await MessageNotification.update({
-         //   status: 'success'
-         // }, {
-         //   where: {
-         //     id: req.params.message_id
-         //   }
-         // })
+        let sendMessageData = null
+        if (req.body.media !== null && req.body.media !== '' && req.body.media !== undefined) {
+          const media = await MessageMedia.fromUrl(req.body.media)
+          sendMessageData = await waClient.sendMessage(numberDetails, media, { caption: text })
+          await MessageNotification.update({
+            status: 'success'
+          }, {
+            where: {
+              id: req.params.message_id
+            }
+          })
   
-        //}
-         
-        const sendMessageData = await waClient.sendMessage(numberDetails, text) // send message
-        await MessageNotification.update({
-          status: 'success'
-        }, {
-          where: {
-            id: req.params.message_id
-          }
-        })
-  
+        } else {
+          sendMessageData = await waClient.sendMessage(numberDetails, text) // send message
+          await MessageNotification.update({
+            status: 'success'
+          }, {
+            where: {
+              id: req.params.message_id
+            }
+          })
+        }
         return res.json({
           data: sendMessageData,
           meta: Meta.response('success', 200, [{

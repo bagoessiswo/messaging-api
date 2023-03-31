@@ -13,7 +13,8 @@ module.exports = (sequelize, DataTypes) => {
     media: DataTypes.STRING,
     message: DataTypes.STRING,
     scheduled_at: DataTypes.DATE,
-    status: DataTypes.STRING // pending | failed | success
+    status: DataTypes.STRING, // pending | failed | success
+    method: DataTypes.STRING // default: scheduled | direct
   }, {
     timestamps: true,
     paranoid: true,
