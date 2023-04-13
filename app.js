@@ -23,6 +23,15 @@ const isValidAppVersion = require('./middleware/isValidAppVersion')
 const Models = require('./models/index')
 const MessageNotification = Models.message_notification
 const JobstreetApplicant = Models.jobstreet_applicant
+const Alarm = Models.alarm
+const AlarmType = Models.alarm_type
+const User = Models.user
+const UserAttendance = Models.user_attendance
+const UserShift = Models.user_shift
+const WorkShiftSchedule = Models.work_shift_schedule
+const WorkSchedule = Models.work_schedule
+const { Op } = require('sequelize')
+
 let INTERVIEW_LINK = 'https://task.iwata.id/interview'
 const fs = require('fs')
 const MONGO_URI = 'mongodb+srv://qupas:s9kb0rQnQsB6Mwrj@cluster0.t9bib6c.mongodb.net/?retryWrites=true&w=majority'
@@ -31,6 +40,111 @@ const mongoose = require('mongoose');
 const { Client, LocalAuth, RemoteAuth, MessageMedia } = require('whatsapp-web.js')
 const SESSION_FILE_PATH2 = './.wwebjs_auth2'
 const SESSION_FILE_PATH = './.wwebjs_auth'
+
+async function getAttendanceSummary(groupId) {
+  let offense = 0
+  let message = `*Pelanggaran - Absensi*\nTanggal *${moment().format('DD MMM YYYY')}*\n`
+  let count = 0
+  let users = []
+  if (groupId === '120363025101760129@g.us') { //MITRAKITA
+    users = await User.findAll({
+      where: {
+        status: 'active',
+        branch_id: 'f95507a0-bc44-11eb-8216-0aa66ecb6fa4',
+        id: {
+          [Op.notIn]: [
+            '9fefe6d2-7105-470b-9e64-c23891d9eeea',
+            '52ec2ab1-1c71-4cee-a4ff-d7cb995ec93b', //lenny
+            '3fca5840-0fee-11ea-b9dd-05b33a5e4201'
+          ]
+        }
+      },
+      order: [
+        ['name', 'asc']
+      ]
+    })
+  } else if (groupId === '120363038472864085@g.us') { //TOBA
+    users = await User.findAll({
+      where: {
+        status: 'active',
+        branch_id: 'f9556388-bc44-11eb-8216-0aa66ecb6fa4',
+        id: {
+          [Op.notIn]: ['ebe02f0e-adb7-40f8-8676-d651edc8ca5d']
+        }
+      },
+      order: [
+        ['name', 'asc']
+      ]
+    })
+  }
+    
+  await Promise.map(users, async (user, index) => {
+    const userShift = await UserShift.findOne({
+      where: {
+        user_id: user.id,
+        status: 'active'
+      }
+    })
+
+    if (userShift) {
+      const workShiftSchedules = await WorkShiftSchedule.findAll({
+        where: {
+          work_shift_id: userShift.work_shift_id
+        },
+        include: [
+          {
+            model: WorkSchedule,
+            required: true,
+            where: {
+              day: moment().format('d')
+            }
+          }
+        ],
+        distinct: true
+      })
+      const attendance = await UserAttendance.findOne({
+        where: {
+          user_id: user.id,
+          created_at: {
+            [Op.gte]: moment().format('YYYY-MM-DD 00:00:00'),
+            [Op.lte]: moment().format('YYYY-MM-DD 23:59:59')
+          },
+          type: 'checkin'
+        }
+      })
+
+      if (workShiftSchedules) {
+        await Promise.map(workShiftSchedules, async ws => {
+          if (attendance) {
+            if (ws.work_schedule.checkin_at < moment.utc(attendance.created_at).format('HH:mm:ss')) {
+              count++
+              offense = 1
+              
+              const duration = (moment.duration(moment(moment.utc(attendance.created_at).format('YYYY-MM-DD HH:mm:ss')).diff(moment(moment().format('YYYY-MM-DD') + ' ' + ws.work_schedule.checkin_at)))).asMinutes()
+              message += `${count}. ${(user.name.split(' '))[0]} telat absen ${Number(duration).toFixed(1)} menit\n`
+              
+            }
+          } else {
+            count++
+            offense = 1
+            message += `${count}. ${(user.name.split(' '))[0]} belum absen\n`
+          }                                
+          
+          return ws
+        })
+      }
+    }
+    
+    return user
+  })
+
+  if (offense === 1) {
+    return message
+  } else {
+    return 'No offense summary available.'
+  }
+}
+
 function connectWA (robot = 1, forceNewSession = false) {
   let client = null
   if (robot === 1) {
@@ -123,13 +237,21 @@ function connectWA (robot = 1, forceNewSession = false) {
       await client.sendMessage(msg.from, 'info: ' + msg.from);
     }
 
+    if(msg.body === '!attendance_summary' && robot === 1) {
+      if (parseInt(moment().format('d')) > 0) {
+        const summary = await getAttendanceSummary(msg.from)
+        await client.sendMessage(msg.from, summary);
+      } else {
+        await client.sendMessage(msg.from, 'No offense summary available.');
+      }
+    }
   })
 
-  client.on('change_battery', (batteryInfo) => {
-    // Battery percentage for attached device has changed
-    const { battery, plugged } = batteryInfo;
-    console.log(`Battery: ${battery}% - Charging? ${plugged}`);
-  });
+  // client.on('change_battery', (batteryInfo) => {
+  //   // Battery percentage for attached device has changed
+  //   const { battery, plugged } = batteryInfo;
+  //   console.log(`Battery: ${battery}% - Charging? ${plugged}`);
+  // });
   // client.on('auth_failure', (reason) => {
   //   sessionData = null
   //   try {
