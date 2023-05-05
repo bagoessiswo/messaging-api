@@ -41,9 +41,9 @@ const { Client, LocalAuth, RemoteAuth, MessageMedia } = require('whatsapp-web.js
 const SESSION_FILE_PATH2 = './.wwebjs_auth2'
 const SESSION_FILE_PATH = './.wwebjs_auth'
 
-async function getAttendanceSummary(groupId) {
+async function getAttendanceSummary(groupId, date) {
   let offense = 0
-  let message = `*Pelanggaran - Absensi*\nTanggal *${moment().format('DD MMM YYYY')}*\n`
+  let message = `*Pelanggaran - Absensi*\nTanggal *${moment(date).format('DD MMM YYYY')}*\n`
   let count = 0
   let users = []
   if (groupId === '120363025101760129@g.us') { //MITRAKITA
@@ -96,7 +96,7 @@ async function getAttendanceSummary(groupId) {
             model: WorkSchedule,
             required: true,
             where: {
-              day: moment().format('d')
+              day: moment(date).format('d')
             }
           }
         ],
@@ -106,8 +106,8 @@ async function getAttendanceSummary(groupId) {
         where: {
           user_id: user.id,
           created_at: {
-            [Op.gte]: moment().format('YYYY-MM-DD 00:00:00'),
-            [Op.lte]: moment().format('YYYY-MM-DD 23:59:59')
+            [Op.gte]: moment(date).format('YYYY-MM-DD 00:00:00'),
+            [Op.lte]: moment(date).format('YYYY-MM-DD 23:59:59')
           },
           type: 'checkin'
         }
@@ -120,7 +120,7 @@ async function getAttendanceSummary(groupId) {
               count++
               offense = 1
               
-              const duration = (moment.duration(moment(moment.utc(attendance.created_at).format('YYYY-MM-DD HH:mm:ss')).diff(moment(moment().format('YYYY-MM-DD') + ' ' + ws.work_schedule.checkin_at)))).asMinutes()
+              const duration = (moment.duration(moment(moment.utc(attendance.created_at).format('YYYY-MM-DD HH:mm:ss')).diff(moment(moment(date).format('YYYY-MM-DD') + ' ' + ws.work_schedule.checkin_at)))).asMinutes()
               message += `${count}. ${(user.name.split(' '))[0]} telat absen ${Number(duration).toFixed(1)} menit\n`
               
             }
@@ -237,9 +237,17 @@ function connectWA (robot = 1, forceNewSession = false) {
       await client.sendMessage(msg.from, 'info: ' + msg.from);
     }
 
-    if(msg.body === '!attendance_summary' && robot === 1) {
-      if (parseInt(moment().format('d')) > 0) {
-        const summary = await getAttendanceSummary(msg.from)
+    const attendanceSummary = msg.body.search("attendance_summary")
+    if(attendanceSummary && robot === 1) {
+      let summaryDate = moment().format('YYYY-MM-DD')
+      const commandDetail = msg.body.split("|")
+      if (commandDetail.length>1) {
+        if (commandDetail[1] !== "") {
+          summaryDate = moment(commandDetail[1]).format('YYYY-MM-DD')
+        }
+      }
+      if (parseInt(moment(summaryDate).format('d')) > 0) {
+        const summary = await getAttendanceSummary(msg.from, summaryDate)
         await client.sendMessage(msg.from, summary);
       } else {
         await client.sendMessage(msg.from, 'No offense summary available.');
