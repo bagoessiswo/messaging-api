@@ -237,8 +237,8 @@ function connectWA (robot = 1, forceNewSession = false) {
       await client.sendMessage(msg.from, 'info: ' + msg.from);
     }
 
-    const attendanceSummary = msg.body.search("attendance_summary")
-    if(attendanceSummary && robot === 1) {
+    const attendanceSummary = msg.body.search("!attendance_summary")
+    if(attendanceSummary > -1 && robot === 1) {
       let summaryDate = moment().format('YYYY-MM-DD')
       const commandDetail = msg.body.split("|")
       if (commandDetail.length>1) {
