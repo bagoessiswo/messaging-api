@@ -37,9 +37,11 @@ const fs = require('fs')
 const MONGO_URI = 'mongodb+srv://qupas:s9kb0rQnQsB6Mwrj@cluster0.t9bib6c.mongodb.net/?retryWrites=true&w=majority'
 const { MongoStore } = require('wwebjs-mongo');
 const mongoose = require('mongoose');
-const { Client, LocalAuth, RemoteAuth, MessageMedia } = require('whatsapp-web.js')
+const { Client, LocalAuth, RemoteAuth, MessageMedia, LocalWebCache } = require('whatsapp-web.js')
 const SESSION_FILE_PATH2 = './.wwebjs_auth2'
 const SESSION_FILE_PATH = './.wwebjs_auth'
+const CACHE_FILE_PATH2 = './.wwebjs_cache2'
+const CACHE_FILE_PATH = './.wwebjs_cache'
 
 async function getAttendanceSummary(groupId, date) {
   let offense = 0
@@ -150,48 +152,54 @@ function connectWA (robot = 1, forceNewSession = false) {
   if (robot === 1) {
     client = new Client({
       authStrategy: new LocalAuth({
-        restartOnAuthFail: true,
-  	    puppeteer: {
-          headless: true,
-          args: [
-            '--no-sandbox',
-              '--disable-setuid-sandbox',
-            '--disable-dev-shm-usage',
-            '--disable-accelerated-2d-canvas',
-            '--no-first-run',
-            '--no-zygote',
-            '--single-process', // <- this one doesn't works in Windows
-            '--disable-gpu'
-          ],
-        },
         clientId: "client-one",
-        qrTimeoutMs: 0,
         dataPath: SESSION_FILE_PATH
-      })
+      }),
+      puppeteer: {
+        headless: true,
+        args: [
+          '--no-sandbox',
+          '--disable-setuid-sandbox',
+          '--disable-dev-shm-usage',
+          '--disable-accelerated-2d-canvas',
+          '--no-first-run',
+          '--no-zygote',
+          '--single-process', // <- this one doesn't works in Windows
+          '--disable-gpu'
+        ],
+      },
+      authTimeoutMs: 0,
+      webVersionCache:{
+        type: 'local',
+        path: CACHE_FILE_PATH
+      }
     })
   }
 
   if (robot === 2) {
     client = new Client({
       authStrategy: new LocalAuth({
-        restartOnAuthFail: true,
-        puppeteer: {
-          headless: true,
-          args: [
-            '--no-sandbox',
-            '--disable-setuid-sandbox',
-            '--disable-dev-shm-usage',
-            '--disable-accelerated-2d-canvas',
-            '--no-first-run',
-            '--no-zygote',
-            '--single-process', // <- this one doesn't works in Windows
-            '--disable-gpu'
-          ],
-        },
         clientId: "client-two",
-        qrTimeoutMs: 0,
         dataPath: SESSION_FILE_PATH2
-      })
+      }),
+      puppeteer: {
+        headless: true,
+        args: [
+          '--no-sandbox',
+          '--disable-setuid-sandbox',
+          '--disable-dev-shm-usage',
+          '--disable-accelerated-2d-canvas',
+          '--no-first-run',
+          '--no-zygote',
+          '--single-process', // <- this one doesn't works in Windows
+          '--disable-gpu'
+        ],
+      },
+      authTimeoutMs: 0,
+      webVersionCache:{
+        type: 'local',
+        path: CACHE_FILE_PATH2
+      }
     })
   }
   client.initialize()
