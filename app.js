@@ -38,8 +38,10 @@ const MONGO_URI = 'mongodb+srv://qupas:s9kb0rQnQsB6Mwrj@cluster0.t9bib6c.mongodb
 const { MongoStore } = require('wwebjs-mongo');
 const mongoose = require('mongoose');
 const { Client, LocalAuth, RemoteAuth, MessageMedia, LocalWebCache } = require('whatsapp-web.js')
+const SESSION_FILE_PATH3 = './.wwebjs_auth3'
 const SESSION_FILE_PATH2 = './.wwebjs_auth2'
 const SESSION_FILE_PATH = './.wwebjs_auth'
+const CACHE_FILE_PATH3 = './.wwebjs_cache3'
 const CACHE_FILE_PATH2 = './.wwebjs_cache2'
 const CACHE_FILE_PATH = './.wwebjs_cache'
 
@@ -202,6 +204,33 @@ function connectWA (robot = 1, forceNewSession = false) {
       }
     })
   }
+
+  if (robot === 3) {
+    client = new Client({
+      authStrategy: new LocalAuth({
+        clientId: "client-three",
+        dataPath: SESSION_FILE_PATH3
+      }),
+      puppeteer: {
+        headless: true,
+        args: [
+          '--no-sandbox',
+          '--disable-setuid-sandbox',
+          '--disable-dev-shm-usage',
+          '--disable-accelerated-2d-canvas',
+          '--no-first-run',
+          '--no-zygote',
+          '--single-process', // <- this one doesn't works in Windows
+          '--disable-gpu'
+        ],
+      },
+      authTimeoutMs: 0,
+      webVersionCache:{
+        type: 'local',
+        path: CACHE_FILE_PATH3
+      }
+    })
+  }
   client.initialize()
   client.on('qr', (qr) => {
     console.log('QR Robot '+robot)
@@ -263,34 +292,12 @@ function connectWA (robot = 1, forceNewSession = false) {
     }
   })
 
-  // client.on('change_battery', (batteryInfo) => {
-  //   // Battery percentage for attached device has changed
-  //   const { battery, plugged } = batteryInfo;
-  //   console.log(`Battery: ${battery}% - Charging? ${plugged}`);
-  // });
-  // client.on('auth_failure', (reason) => {
-  //   sessionData = null
-  //   try {
-  //     // Destroy actual browser
-  //     client.destroy()
-
-  //     // delete session path
-  //     fs.rmdirSync(SESSION_FILE_PATH, { recursive: true })
-
-  //     // Send command to restart the instance
-  //     setTimeout(() => {
-  //       connectWA()
-  //     }, 3000)
-  //   } catch (error) {
-  //     console.error('Error on session finished. %s', error)
-  //   }
-  // })
-
   return client
 }
 
 const client =  connectWA()
 const client2 = connectWA(2)
+const client3 = connectWA(3)
 
 const corsOptions = {
   methods: ['PUT, GET, POST, DELETE, PATCH'],
@@ -383,6 +390,8 @@ app.post('/v1/whatsapp/send', isValidMethod('POST'), isValidAppVersion, async (r
     let waClient = client
     if (req.body.robot === 2) {
       waClient = client2
+    } else if (req.body.robot === 3) {
+      waClient = client3
     }
 
     if (waClient !== undefined){
@@ -553,9 +562,10 @@ app.post('/v1/whatsapp/:message_id/send', async (req, res) => {
     // const chatId = `${req.body.mobile_phone}@c.us`
    // console.log(req.body)
     let waClient = client
-
     if (req.body.robot === 2) {
       waClient = client2
+    } else if (req.body.robot === 3) {
+      waClient = client3
     }
 
     if (waClient !== undefined){
