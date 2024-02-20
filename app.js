@@ -37,12 +37,12 @@ const fs = require('fs')
 const MONGO_URI = 'mongodb+srv://qupas:s9kb0rQnQsB6Mwrj@cluster0.t9bib6c.mongodb.net/?retryWrites=true&w=majority'
 const { MongoStore } = require('wwebjs-mongo');
 const mongoose = require('mongoose');
-const { Client, LocalAuth, RemoteAuth, MessageMedia, LocalWebCache } = require('whatsapp-web.js')
+const { Client, LocalAuth, RemoteAuth, MessageMedia, LocalWebCache, Buttons } = require('whatsapp-web.js')
 const SESSION_FILE_PATH3 = './.wwebjs_auth3'
-const SESSION_FILE_PATH2 = './.wwebjs_auth2'
+// const SESSION_FILE_PATH2 = './.wwebjs_auth2'
 const SESSION_FILE_PATH = './.wwebjs_auth'
 const CACHE_FILE_PATH3 = './.wwebjs_cache3'
-const CACHE_FILE_PATH2 = './.wwebjs_cache2'
+// const CACHE_FILE_PATH2 = './.wwebjs_cache2'
 const CACHE_FILE_PATH = './.wwebjs_cache'
 
 async function getAttendanceSummary(groupId, date) {
@@ -296,7 +296,7 @@ function connectWA (robot = 1, forceNewSession = false) {
 }
 
 const client =  connectWA()
-const client2 = connectWA(2)
+// const client2 = connectWA(2)
 const client3 = connectWA(3)
 
 const corsOptions = {
@@ -378,6 +378,15 @@ app.post('/v1/whatsapp/send', isValidMethod('POST'), isValidAppVersion, async (r
 
   await body('message').notEmpty().trim().run(req)
   await body('media').trim().run(req)
+  if (parseInt(req.body.is_with_button) === 1) {
+    await body('buttons.*').notEmpty().trim().run(req)
+    req.body.buttons = await Promise.map(req.body.buttons, button => {
+      return {
+        id: 'customId',
+        body: button
+      }
+    })
+  }
 
   if (req.body.robot === undefined || req.body.robot === '') {
     req.body.robot = 1
@@ -388,9 +397,10 @@ app.post('/v1/whatsapp/send', isValidMethod('POST'), isValidAppVersion, async (r
     return res.status(400).json({ meta: Meta.response('failed', 400, result.array()) })
   } else {
     let waClient = client
-    if (req.body.robot === 2) {
-      waClient = client2
-    } else if (req.body.robot === 3) {
+    // if (req.body.robot === 2) {
+    //   waClient = client2
+    // } else 
+    if (req.body.robot === 3) {
       waClient = client3
     }
 
@@ -421,11 +431,25 @@ app.post('/v1/whatsapp/send', isValidMethod('POST'), isValidAppVersion, async (r
         
             if (numberDetails) {
               let sendMessageData = null
+              
               if (req.body.media !== null && req.body.media !== '' && req.body.media !== undefined) {
                 const media = await MessageMedia.fromUrl(req.body.media)
-                sendMessageData = await waClient.sendMessage(numberDetails, media, { caption: text })
+
+                if (parseInt(req.body.is_with_button) === 1) {
+                  
+                  const button = new Buttons(media,req.body.buttons,'title','footer');
+                  sendMessageData = await waClient.sendMessage(numberDetails, button, { caption: text })
+                } else {
+                  sendMessageData = await waClient.sendMessage(numberDetails, media, { caption: text })
+                }
               } else {
-                sendMessageData = await waClient.sendMessage(numberDetails, text) // send message
+                if (parseInt(req.body.is_with_button) === 1) {
+                 
+                  const button = new Buttons(text,req.body.buttons,'title','footer');
+                  sendMessageData = await waClient.sendMessage(numberDetails, button)
+                } else {
+                  sendMessageData = await waClient.sendMessage(numberDetails, text) // send message
+                }
               }
   
               if (sendMessageData.ack === 'ACK_ERROR') {
@@ -562,9 +586,10 @@ app.post('/v1/whatsapp/:message_id/send', async (req, res) => {
     // const chatId = `${req.body.mobile_phone}@c.us`
    // console.log(req.body)
     let waClient = client
-    if (req.body.robot === 2) {
-      waClient = client2
-    } else if (req.body.robot === 3) {
+    // if (req.body.robot === 2) {
+    //   waClient = client2
+    // } else 
+    if (req.body.robot === 3) {
       waClient = client3
     }
 
